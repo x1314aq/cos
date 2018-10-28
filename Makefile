@@ -39,7 +39,7 @@ clean:
 .PHONY:update_image
 update_image:
 	@echo updating image...
-	dd if=$(TARGET) of=$(IMG) bs=512 count=1 conv=notrun
+	dd if=$(TARGET) of=$(IMG) bs=512 count=1 conv=notrunc
 
 .PHONY:create_image
 create_image:
