@@ -1,57 +1,38 @@
 #!Makefile
 
 TARGET = cos
-IMG = floppy.img
 CC = gcc
 LD = ld
-AS = gas
 OBJCOPY = objcopy
 OBJDUMP = objdump
 RM = rm -f
 
-CFLAGS = -fno-pic -static -fno-builtin -fno-strict-aliasing -O2 -Wall -MD -ggdb3 -m32 -Werror -fno-omit-frame-pointer -fno-stack-protector
-ASFLAGS = -m32 -gdwarf-2 -Wa,-divide
-LDFLAGS = -T scripts/kernel.ld -m elf_i386 -nostdlib
+CFLAGS = -fno-pic -static -fno-builtin -fno-strict-aliasing -O2 -Wall -MD -g -ggdb3 -m32 -Werror -fno-omit-frame-pointer -fno-stack-protector
+LDFLAGS = -m elf_i386 -nostdlib
+INCLUDE = -Iinclude
 
-C_SOURCES = $(shell find . -name "*.c")
-C_OBJECTS = $(patsubst %.c, %.o, $(C_SOURCES))
-S_SOURCES = $(shell find . -name "*.S")
-S_OBJECTS = $(patsubst %.S, %.o, $(S_SOURCES))
+$(TARGET): sign bootloader
+	dd if=/dev/zero of=$(TARGET) count=10000
+	dd if=bootloader of=$(TARGET) conv=notrunc
 
-all: $(S_OBJECTS) $(C_OBJECTS) $(TARGET) update_image
+sign: tools/sign.c
+	$(CC) -Wall -Werror -O2 $^ -o $@
 
-.c.o:
-	@echo compiling C sources $< ...
-	$(CC) $(CFLAGS) $< -o $@
-
-.S.o:
-	@echo compiling AS sources $< ...
-	$(AS) $(ASFLAGS) $<
-
-$(TARGET):
-	@echo linking...
-	$(LD) $(LDFLAGS) $(S_OBJECTS) $(C_OBJECTS) -o $@
+bootloader: bootasm.S bootmain.c
+	$(CC) $(CFLAGS) -nostdinc $(INCLUDE) -c bootmain.c
+	$(CC) $(CFLAGS) -nostdinc $(INCLUDE) -c bootasm.S
+	$(LD) $(LDFLAGS) -N -e start -Ttext 0x7C00 bootloader.o bootasm.o bootmain.o
+	$(OBJCOPY) -S -O binary -j .text bootloader.o bootloader0
+	./sign bootloader0 bootloader
 
 .PHONY:clean
 clean:
-	$(RM) $(S_OBJECTS) $(C_OBJECTS) $(TARGET) $(IMG)
-
-.PHONY:update_image
-update_image:
-	@echo updating image...
-	dd if=$(TARGET) of=$(IMG) bs=512 count=1 conv=notrunc
-
-.PHONY:create_image
-create_image:
-	@echo creating empty image: $(IMG)
-	dd if=/dev/zero of=$(IMG) bs=512 count=2880
-	mkfs.msdos $(IMG)
+	$(RM) $(TARGET) *.o sign
 
 .PHONY:qemu
 qemu:
-	qemu -fda $(IMG) -boot a
+	qemu -fda $(TARGET) -boot a
 
 .PHONY:debug
 debug:
-	qemu -S -s -fda $(IMG) -boot a &
-	cgdb -x tools/gdbinit
+	qemu -S -s -fda $(TARGET) -boot a &
