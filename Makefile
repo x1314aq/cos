@@ -21,18 +21,28 @@ sign: tools/sign.c
 bootloader: bootasm.S bootmain.c
 	$(CC) $(CFLAGS) -nostdinc $(INCLUDE) -c bootmain.c
 	$(CC) $(CFLAGS) -nostdinc $(INCLUDE) -c bootasm.S
-	$(LD) $(LDFLAGS) -N -e start -Ttext 0x7C00 bootloader.o bootasm.o bootmain.o
+	$(LD) $(LDFLAGS) -N -e start -Ttext 0x7C00 -o bootloader.o bootasm.o bootmain.o
 	$(OBJCOPY) -S -O binary -j .text bootloader.o bootloader0
 	./sign bootloader0 bootloader
 
 .PHONY:clean
 clean:
-	$(RM) $(TARGET) *.o sign
+	$(RM) $(TARGET) *.o sign bootloader0 bootloader
+
+# try to generate a unique GDB port
+GDBPORT = $(shell expr `id -u` % 5000 + 25000)
+# QEMU's gdb stub command line changed in 0.11
+QEMUGDB = $(shell if $(QEMU) -help | grep -q '^-gdb'; \
+	then echo "-gdb tcp::$(GDBPORT)"; \
+	else echo "-s -p $(GDBPORT)"; fi)
+
+#QEMUOPTS = -drive file=fs.img,index=1,media=disk,format=raw -drive file=${TARGET},index=0,media=disk,format=raw -smp 1 -m 512 $(QEMUEXTRA)
+QEMUOPTS = -drive file=${TARGET},index=0,media=disk,format=raw -smp 1 -m 512 $(QEMUEXTRA)
 
 .PHONY:qemu
-qemu:
-	qemu -fda $(TARGET) -boot a
+qemu: ${TARGET}
+	qemu -nographic ${QEMUOPTS}
 
 .PHONY:debug
-debug:
-	qemu -S -s -fda $(TARGET) -boot a &
+debug: ${TARGET}
+	qemu -nographic ${QEMUOPTS} -S ${QEMUGDB}
