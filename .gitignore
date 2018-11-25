@@ -1,4 +1,10 @@
 *.o
+build/
+release/
+debug/
+.ycm_extra_conf.py
+compile_commands.json
+.tags
+tags
 cos
-floppy.img
 sign
