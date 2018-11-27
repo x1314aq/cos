@@ -11,39 +11,40 @@
 
 #define SECTSIZE  512
 
-void readseg(uchar*, uint, uint);
+void readseg(uint8_t*, uint32_t, uint32_t);
 
 void
 bootmain(void)
 {
   struct elfhdr *elf;
   struct proghdr *ph, *eph;
-  void (*entry)(void);
-  uchar* va;
+  typedef void (*entry_func)(void);
+  entry_func kentry;
+  uint8_t *va;
 
-  elf = (struct elfhdr*)0x10000;  // scratch space
+  elf = (struct elfhdr *)0x10000;  // scratch space
 
   // Read 1st page off disk
-  readseg((uchar*)elf, 4096, 0);
+  readseg((uint8_t *)elf, 4096, 0);
 
   // Is this an ELF executable?
   if(elf->magic != ELF_MAGIC)
-    return;  // let bootasm.S handle error
+      return;  // let bootasm.S handle error
 
   // Load each program segment (ignores ph flags).
-  ph = (struct proghdr*)((uchar*)elf + elf->phoff);
+  ph = (struct proghdr *)((uint8_t*)elf + elf->phoff);
   eph = ph + elf->phnum;
   for(; ph < eph; ph++) {
-    va = (uchar*)(ph->va & 0xFFFFFF);
-    readseg(va, ph->filesz, ph->offset);
-    if(ph->memsz > ph->filesz)
-      stosb(va + ph->filesz, 0, ph->memsz - ph->filesz);
+      va = (uint8_t *)(ph->vaddr & 0xFFFFFF);
+      readseg(va, ph->filesz, ph->offset);
+      if(ph->memsz > ph->filesz)
+          stosb(va + ph->filesz, 0, ph->memsz - ph->filesz);
   }
 
-  // Call the entry point from the ELF header.
+  // Call the kernel entry point from the ELF header.
   // Does not return!
-  entry = (void(*)(void))(elf->entry & 0xFFFFFF);
-  entry();
+  kentry = (entry_func)(elf->entry & 0xFFFFFF);
+  kentry();
 }
 
 void
@@ -56,7 +57,7 @@ waitdisk(void)
 
 // Read a single sector at offset into dst.
 void
-readsect(void *dst, uint offset)
+readsect(void *dst, uint32_t offset)
 {
   // Issue command.
   waitdisk();
@@ -75,9 +76,9 @@ readsect(void *dst, uint offset)
 // Read 'count' bytes at 'offset' from kernel into virtual address 'va'.
 // Might copy more than asked.
 void
-readseg(uchar* va, uint count, uint offset)
+readseg(uint8_t* va, uint32_t count, uint32_t offset)
 {
-  uchar* eva;
+  uint8_t* eva;
 
   eva = va + count;
 
