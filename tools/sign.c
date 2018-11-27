@@ -14,16 +14,16 @@ int main(int argc, char *argv[])
     struct stat st;
     if (argc != 3) {
         fprintf(stderr, "Usage: <input filename> <output filename>\n");
-        return 0;
+        return 1;
     }
     if (stat(argv[1], &st) != 0) {
         fprintf(stderr, "Error opening file '%s': %s\n", argv[1], strerror(errno));
-        return 0;
+        return 1;
     }
     printf("'%s' size: %lld bytes\n", argv[1], (long long)st.st_size);
     if (st.st_size > 510) {
         fprintf(stderr, "%lld >> 510!!\n", (long long)st.st_size);
-        return 0;
+        return 1;
     }
     char buf[512];
     memset(buf, 0, sizeof(buf));
@@ -32,7 +32,7 @@ int main(int argc, char *argv[])
     fclose(ifp);
     if (size != st.st_size) {
         fprintf(stderr, "read '%s' error, size is %d.\n", argv[1], size);
-        return 0;
+        return 1;
     }
     buf[510] = 0x55;
     buf[511] = 0xAA;
@@ -40,7 +40,7 @@ int main(int argc, char *argv[])
     size = fwrite(buf, 1, 512, ofp);
     if (size != 512) {
         fprintf(stderr, "write '%s' error, size is %d.\n", argv[2], size);
-        return 0;
+        return 1;
     }
     fclose(ofp);
     printf("build 512 bytes boot sector: '%s' success!\n", argv[2]);
