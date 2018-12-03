@@ -22,12 +22,12 @@ bootloader: boot/bootasm.S boot/bootmain.c
 	$(CC) $(CFLAGS) -nostdinc $(INCLUDE) -c boot/bootmain.c -o boot/bootmain.o
 	$(CC) $(CFLAGS) -nostdinc $(INCLUDE) -c boot/bootasm.S -o boot/bootasm.o
 	$(LD) $(LDFLAGS) -N -e start -Ttext 0x7C00 -o boot/bootloader.o boot/bootasm.o boot/bootmain.o
-	$(OBJCOPY) -S -O binary -j .text boot/bootloader.o bootloader0
-	./sign bootloader0 bootloader
+	$(OBJCOPY) -S -O binary -j .text boot/bootloader.o bootloader
+	./sign bootloader
 
 .PHONY:clean
 clean:
-	$(RM) $(TARGET) boot/*.o sign bootloader0 bootloader
+	$(RM) $(TARGET) boot/*.o sign bootloader
 
 # try to generate a unique GDB port
 GDBPORT = $(shell expr `id -u` % 5000 + 25000)
