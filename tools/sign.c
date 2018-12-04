@@ -13,7 +13,7 @@ int main(int argc, char *argv[])
 {
     struct stat st;
     if (argc != 2) {
-        fprintf(stderr, "Usage: <input filename> <output filename>\n");
+        fprintf(stderr, "Usage: sign FILE\n");
         return 1;
     }
     if (stat(argv[1], &st) != 0) {
@@ -34,6 +34,7 @@ int main(int argc, char *argv[])
     }
     buf[510] = 0x55;
     buf[511] = 0xAA;
+    rewind(fp);
     size = fwrite(buf, 1, 512, fp);
     if (size != 512) {
         fprintf(stderr, "fwrite error, %d bytes has been writed\n", size);
